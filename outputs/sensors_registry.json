@@ -1,0 +1,12 @@
+{
+  "IoT-001": {
+    "station_id": "020109B",
+    "sensor_model": "NEERA-IoT-Standard",
+    "coordinates": {
+      "latitude": 16.8,
+      "longitude": 75.1
+    },
+    "registered_at": 1779762921.18707,
+    "status": "online"
+  }
+}

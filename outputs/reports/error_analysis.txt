@@ -1,0 +1,47 @@
+=========================================================
+NEERA DETAILED ERROR ANALYSIS REPORT
+Model: LGBMRegressor
+Generated at: 2026-05-26T06:43:41.631251
+=========================================================
+
+Overall Test Set Metrics:
+  - Mean Absolute Error (MAE): 7.1728 MBGL
+  - Root Mean Squared Error (RMSE): 13.3907 MBGL
+  - Mean Absolute Percentage Error (MAPE): 566.50%
+
+Top 10 Worst Performing Groundwater Stations by MAE:
+station_id  obs_count       mae      rmse
+    131110          2 87.972423 88.089001
+    130714          3 85.622467 96.138090
+    130909          2 82.232235 82.537119
+    130812          3 68.906005 79.058782
+    131121          3 57.529404 61.148588
+    131119          3 55.453351 60.075523
+    130717          3 51.616530 60.920866
+    130712          3 50.090599 55.939392
+    131014          3 47.236486 58.453674
+    130117          3 46.857350 48.413467
+
+Error Metrics by Year:
+      obs_count       mae       rmse
+year                                
+2021       1410  7.802746  14.616210
+2022        775  6.026741  10.810311
+
+Error Metrics by Season:
+              obs_count       mae       rmse
+season                                      
+pre_monsoon        1427  8.044326  14.396874
+post_monsoon        758  5.532114  11.254891
+
+Rainfall Failure Mode Analysis:
+  - High Rainfall Threshold (90th percentile): 249.64 mm
+  - High Rainfall MAE (>= p90): 7.0447 MBGL (obs count: 701)
+  - Normal Rainfall MAE (< p90): 7.6393 MBGL (obs count: 1186)
+
+Routing and Fallback Analysis:
+  (rainfall_fallback_used: 1 = Fallback to district/state, 0 = Local telemetry used)
+                        obs_count       mae       rmse
+rainfall_fallback_used                                
+0.0                           307  8.287170  13.538044
+1.0                          1878  6.990647  13.366416

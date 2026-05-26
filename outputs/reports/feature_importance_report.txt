@@ -1,0 +1,49 @@
+=========================================================
+NEERA FEATURE IMPORTANCE REPORT
+Model: LGBMRegressor
+Generated at: 2026-05-26T06:43:21.363195
+=========================================================
+
+Gain-Based Feature Importance (All features):
+                          Feature  Gain_Importance
+                          gw_diff             4716
+             rainfall_distance_km             4675
+                          prev_gw             4399
+                 gw_roll_std_7obs             3664
+           effective_rainfall_30d             2331
+                gw_roll_mean_7obs             2219
+          effective_rainfall_180d             2174
+           effective_rainfall_90d             2153
+               gw_roll_mean_30obs             1484
+                       station_id             1457
+             rainfall_source_type              441
+rainfall_window_completeness_180d              156
+                       season_sin               92
+ rainfall_window_completeness_30d               39
+                       season_cos                0
+           rainfall_fallback_used                0
+                           season                0
+                   mapping_method                0
+ rainfall_window_completeness_90d                0
+
+Permutation-Based Feature Importance (All features on Validation Set):
+                          Feature  Permutation_Importance_Mean  Permutation_Importance_Std
+                          prev_gw                     1.760012                    0.044273
+                          gw_diff                     0.093926                    0.002519
+                       station_id                     0.045512                    0.002919
+                gw_roll_mean_7obs                     0.032219                    0.001332
+             rainfall_distance_km                     0.023681                    0.002370
+          effective_rainfall_180d                     0.018757                    0.001370
+               gw_roll_mean_30obs                     0.009817                    0.001486
+           effective_rainfall_90d                     0.007199                    0.001717
+                       season_sin                     0.004492                    0.000485
+           effective_rainfall_30d                     0.003351                    0.001299
+                 gw_roll_std_7obs                     0.001786                    0.001670
+                       season_cos                     0.000000                    0.000000
+           rainfall_fallback_used                     0.000000                    0.000000
+                           season                     0.000000                    0.000000
+                   mapping_method                     0.000000                    0.000000
+ rainfall_window_completeness_90d                     0.000000                    0.000000
+ rainfall_window_completeness_30d                    -0.000020                    0.000053
+rainfall_window_completeness_180d                    -0.000282                    0.000073
+             rainfall_source_type                    -0.000861                    0.000464

@@ -1,0 +1,22 @@
+2026-05-26 03:39:42,682 INFO Pipeline start | memory=73.4MB
+2026-05-26 03:39:42,683 INFO Loading seasonal dataset
+2026-05-26 03:39:44,484 INFO Seasonal rows=87840 | memory=154.0MB
+2026-05-26 03:39:44,484 INFO Loading rainfall dataset
+2026-05-26 03:39:44,872 INFO Rain daily rows=48542 | memory=183.3MB
+2026-05-26 03:39:44,872 INFO Telemetry size 0.94 MB | chunked=False
+2026-05-26 03:39:44,917 INFO Chunk 1 processed | in_rows=7977 clean_rows=7977 dup_ts=0 mem=183.3MB
+2026-05-26 03:39:44,934 INFO Telemetry daily rows=940 | memory=183.3MB
+2026-05-26 03:39:46,614 INFO Wrote master dataset: /Users/abhiram/Developer/NEERA/master_dataset.csv (rows=88780)
+2026-05-26 03:39:46,615 INFO Wrote preprocessing report: /Users/abhiram/Developer/NEERA/preprocessing_report.txt
+2026-05-26 03:39:46,616 INFO Pipeline complete in 3.9s | memory=199.6MB
+2026-05-26 03:40:17,351 INFO Pipeline start | memory=73.2MB
+2026-05-26 03:40:17,352 INFO Loading seasonal dataset
+2026-05-26 03:40:18,991 INFO Seasonal rows=87840 | memory=151.6MB
+2026-05-26 03:40:18,992 INFO Loading rainfall dataset
+2026-05-26 03:40:19,332 INFO Rain daily rows=48542 | memory=179.4MB
+2026-05-26 03:40:19,333 INFO Telemetry size 0.94 MB | chunked=False
+2026-05-26 03:40:19,379 INFO Chunk 1 processed | in_rows=7977 clean_rows=7977 dup_ts=0 mem=179.9MB
+2026-05-26 03:40:19,396 INFO Telemetry daily rows=940 | memory=180.0MB
+2026-05-26 03:40:27,980 INFO Wrote master dataset: /Users/abhiram/Developer/NEERA/master_dataset.csv (rows=88476)
+2026-05-26 03:40:27,982 INFO Wrote preprocessing report: /Users/abhiram/Developer/NEERA/preprocessing_report.txt
+2026-05-26 03:40:27,982 INFO Pipeline complete in 10.6s | memory=195.4MB

@@ -1,0 +1,17 @@
+=========================================================
+NEERA DATA VALIDATION REPORT
+Generated at: 2026-05-26T06:40:55.943799
+=========================================================
+
+Summary Statistics:
+  - total_rows: 11042
+  - unique_stations: 803
+  - duplicate_timestamps: 0
+  - non_monotonic_stations: 0
+  - invalid_gw_values_count: 17
+  - target_leakage_failures: 0
+  - invalid_rain_values_count: 0
+  - duplicate_dates: 0
+
+Issues & Warnings:
+  - WARNING: Found 17 rows with suspicious groundwater level (outside 0-150 MBGL).
