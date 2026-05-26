@@ -16,8 +16,8 @@ from dotenv import load_dotenv
 load_dotenv()
 
 from typing import Dict, Any, Optional, List
-from fastapi import FastAPI, HTTPException
-from fastapi.responses import JSONResponse, HTMLResponse
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.responses import JSONResponse, HTMLResponse, RedirectResponse
 from pydantic import BaseModel, Field
 from fastapi.middleware.cors import CORSMiddleware
 import numpy as np
@@ -292,7 +292,15 @@ class ChatCopilotRequest(BaseModel):
     query: Optional[str] = None
 
 @app.get("/")
-@app.get("/home", response_class=HTMLResponse)
+@app.get("/home")
+def home_landing_redirect(request: Request):
+    # Dynamically redirect root requests to the Next.js frontend dashboard
+    host = request.headers.get("host", "")
+    if "localhost" in host or "127.0.0.1" in host:
+        return RedirectResponse(url="http://localhost:3000")
+    return RedirectResponse(url="https://neera-dashboard.onrender.com")
+
+@app.get("/api/endpoints", response_class=HTMLResponse)
 def home_landing():
     html_content = """
     <!DOCTYPE html>
