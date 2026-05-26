@@ -27,7 +27,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY *.py /app/
 COPY weather_providers /app/weather_providers
 COPY ai_providers /app/ai_providers
-COPY data /app/data
+
 COPY outputs /app/outputs
 
 # Expose port
