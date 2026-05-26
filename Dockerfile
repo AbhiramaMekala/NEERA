@@ -29,6 +29,7 @@ COPY weather_providers /app/weather_providers
 COPY ai_providers /app/ai_providers
 
 COPY outputs /app/outputs
+COPY data /app/data
 
 # Expose port
 EXPOSE 8000

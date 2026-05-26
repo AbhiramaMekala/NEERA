@@ -191,3 +191,19 @@ To build and launch both the backend and frontend in isolated containers:
 - **`POST /api/sensors/register`**: Registers a new IoT hardware telemetry sensor.
 - **`POST /api/sensors/ingest`**: Ingests live telemetry readings into the SQLite database.
 - **`GET /api/sensors/latest`**: Lists the latest telemetry readings for registered sensors.
+
+---
+
+## 7. Deployment to Render (onrender.com)
+
+NEERA can be deployed directly to Render as a multi-service Blueprint using the provided [render.yaml](file:///Users/abhiram/Developer/NEERA/render.yaml) file:
+
+1. **Push Changes to GitHub**: Commit and push the workspace changes to your repository.
+2. **Go to Render Dashboard**: Log in to [dashboard.render.com](https://dashboard.render.com).
+3. **Deploy Blueprint**:
+   - Click **New +** on the top right, and select **Blueprint**.
+   - Connect your GitHub repository containing this project.
+   - Render will read the `render.yaml` configuration and list the two services: `neera-api` and `neera-dashboard`.
+4. **Configure Environment Variables**:
+   - Provide the `GEMINI_API_KEY` for the backend API in the Render environment variables prompt.
+5. **Launch**: Click **Apply** to build and launch the backend and frontend services. The Next.js frontend will compile using the Docker build-args to communicate directly with your Render API instance.

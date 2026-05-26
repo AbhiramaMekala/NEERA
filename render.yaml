@@ -1,0 +1,28 @@
+services:
+  # 1. Backend REST API Service
+  - type: web
+    name: neera-api
+    env: docker
+    dockerfilePath: Dockerfile
+    dockerContext: .
+    plan: starter
+    envVars:
+      - key: GEMINI_API_KEY
+        sync: false # User can input their API key via Render Dashboard
+      - key: OPENWEATHER_API_KEY
+        sync: false # Optional OWM weather key
+      - key: MQTT_BROKER
+        value: broker.hivemq.com
+      - key: MQTT_PORT
+        value: "1883"
+
+  # 2. Frontend Next.js Dashboard Service
+  - type: web
+    name: neera-dashboard
+    env: docker
+    dockerfilePath: frontend/Dockerfile
+    dockerContext: frontend
+    plan: starter
+    envVars:
+      - key: NEXT_PUBLIC_API_URL
+        value: https://neera-api.onrender.com

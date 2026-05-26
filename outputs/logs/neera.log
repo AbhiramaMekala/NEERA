@@ -512,3 +512,7 @@
 {"timestamp": "2026-05-26 11:45:14,652", "level": "INFO", "name": "neera", "message": "{\"type\": \"request_timing\", \"path\": \"/api/alerts\", \"method\": \"GET\", \"duration_ms\": 13407.07, \"status_code\": 200}"}
 {"timestamp": "2026-05-26 11:45:16,216", "level": "INFO", "name": "neera", "message": "{\"type\": \"request_timing\", \"path\": \"/health\", \"method\": \"GET\", \"duration_ms\": 2.33, \"status_code\": 200}"}
 {"timestamp": "2026-05-26 11:46:00,261", "level": "INFO", "name": "neera", "message": "{\"type\": \"request_timing\", \"path\": \"/health\", \"method\": \"GET\", \"duration_ms\": 5.7, \"status_code\": 200}"}
+{"timestamp": "2026-05-26 11:47:38,201", "level": "INFO", "name": "neera", "message": "{\"type\": \"request_timing\", \"path\": \"/health\", \"method\": \"GET\", \"duration_ms\": 3.28, \"status_code\": 200}"}
+{"timestamp": "2026-05-26 11:49:20,763", "level": "INFO", "name": "neera", "message": "{\"type\": \"request_timing\", \"path\": \"/health\", \"method\": \"GET\", \"duration_ms\": 5.33, \"status_code\": 200}"}
+{"timestamp": "2026-05-26 11:51:40,652", "level": "INFO", "name": "neera", "message": "{\"type\": \"request_timing\", \"path\": \"/health\", \"method\": \"GET\", \"duration_ms\": 9.53, \"status_code\": 200}"}
+{"timestamp": "2026-05-26 11:53:41,959", "level": "INFO", "name": "neera", "message": "{\"type\": \"request_timing\", \"path\": \"/health\", \"method\": \"GET\", \"duration_ms\": 5.38, \"status_code\": 200}"}
