@@ -1,0 +1,156 @@
+{
+  "fields": [
+    {
+      "name": "station_id",
+      "dtype": "str"
+    },
+    {
+      "name": "timestamp",
+      "dtype": "str"
+    },
+    {
+      "name": "Groundwater_Level_MBGL",
+      "dtype": "float64"
+    },
+    {
+      "name": "prev_gw",
+      "dtype": "float64"
+    },
+    {
+      "name": "gw_diff",
+      "dtype": "float64"
+    },
+    {
+      "name": "gw_roll_mean_7obs",
+      "dtype": "float64"
+    },
+    {
+      "name": "gw_roll_std_7obs",
+      "dtype": "float64"
+    },
+    {
+      "name": "gw_roll_mean_30obs",
+      "dtype": "float64"
+    },
+    {
+      "name": "rainfall_30d",
+      "dtype": "float64"
+    },
+    {
+      "name": "rainfall_90d",
+      "dtype": "float64"
+    },
+    {
+      "name": "rainfall_180d",
+      "dtype": "float64"
+    },
+    {
+      "name": "district_rainfall_30d",
+      "dtype": "float64"
+    },
+    {
+      "name": "district_rainfall_90d",
+      "dtype": "float64"
+    },
+    {
+      "name": "district_rainfall_180d",
+      "dtype": "float64"
+    },
+    {
+      "name": "state_rainfall_30d",
+      "dtype": "float64"
+    },
+    {
+      "name": "state_rainfall_90d",
+      "dtype": "float64"
+    },
+    {
+      "name": "state_rainfall_180d",
+      "dtype": "float64"
+    },
+    {
+      "name": "target_next_season_gw",
+      "dtype": "float64"
+    },
+    {
+      "name": "season",
+      "dtype": "str"
+    },
+    {
+      "name": "season_sin",
+      "dtype": "float64"
+    },
+    {
+      "name": "season_cos",
+      "dtype": "float64"
+    },
+    {
+      "name": "freq",
+      "dtype": "str"
+    },
+    {
+      "name": "rainfall_source_type",
+      "dtype": "str"
+    },
+    {
+      "name": "rainfall_source_station",
+      "dtype": "str"
+    },
+    {
+      "name": "rainfall_station_observation_count",
+      "dtype": "float64"
+    },
+    {
+      "name": "rainfall_window_completeness_30d",
+      "dtype": "float64"
+    },
+    {
+      "name": "rainfall_window_completeness_90d",
+      "dtype": "float64"
+    },
+    {
+      "name": "rainfall_window_completeness_180d",
+      "dtype": "float64"
+    },
+    {
+      "name": "mapping_method",
+      "dtype": "str"
+    },
+    {
+      "name": "rainfall_distance_km",
+      "dtype": "float64"
+    },
+    {
+      "name": "rainfall_district_match",
+      "dtype": "Int8"
+    },
+    {
+      "name": "rainfall_fallback_used",
+      "dtype": "int64"
+    },
+    {
+      "name": "gw_jump_flag",
+      "dtype": "bool"
+    },
+    {
+      "name": "rainfall_extreme_flag",
+      "dtype": "bool"
+    },
+    {
+      "name": "date",
+      "dtype": "str"
+    },
+    {
+      "name": "effective_rainfall_30d",
+      "dtype": "float64"
+    },
+    {
+      "name": "effective_rainfall_90d",
+      "dtype": "float64"
+    },
+    {
+      "name": "effective_rainfall_180d",
+      "dtype": "float64"
+    }
+  ]
+}

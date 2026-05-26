@@ -17,7 +17,7 @@ load_dotenv()
 
 from typing import Dict, Any, Optional, List
 from fastapi import FastAPI, HTTPException
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, HTMLResponse
 from pydantic import BaseModel, Field
 from fastapi.middleware.cors import CORSMiddleware
 import numpy as np
@@ -290,6 +290,290 @@ class ChatCopilotRequest(BaseModel):
     lat: Optional[float] = None
     lon: Optional[float] = None
     query: Optional[str] = None
+
+@app.get("/")
+@app.get("/home", response_class=HTMLResponse)
+def home_landing():
+    html_content = """
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>NEERA: Groundwater Intelligence API</title>
+        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&family=Outfit:wght@400;700;900&display=swap" rel="stylesheet">
+        <style>
+            :root {
+                --bg: #020617;
+                --card-bg: rgba(15, 23, 42, 0.6);
+                --card-border: rgba(51, 65, 85, 0.4);
+                --text-main: #f1f5f9;
+                --text-muted: #94a3b8;
+                --accent-cyan: #06b6d4;
+                --accent-blue: #3b82f6;
+            }
+            * {
+                box-sizing: border-box;
+                margin: 0;
+                padding: 0;
+            }
+            body {
+                font-family: 'Inter', sans-serif;
+                background-color: var(--bg);
+                color: var(--text-main);
+                min-height: 100vh;
+                display: flex;
+                flex-direction: column;
+                justify-content: center;
+                align-items: center;
+                padding: 2rem 1rem;
+                background-image: radial-gradient(circle at 10% 20%, rgba(6, 182, 212, 0.08) 0%, transparent 40%),
+                                  radial-gradient(circle at 90% 80%, rgba(59, 130, 246, 0.08) 0%, transparent 40%);
+            }
+            .container {
+                max-width: 800px;
+                width: 100%;
+                background: var(--card-bg);
+                border: 1px solid var(--card-border);
+                border-radius: 24px;
+                padding: 3rem 2rem;
+                backdrop-filter: blur(16px);
+                box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+                text-align: center;
+            }
+            .logo-container {
+                display: inline-flex;
+                padding: 1rem;
+                background: linear-gradient(135deg, var(--accent-cyan), var(--accent-blue));
+                border-radius: 20px;
+                box-shadow: 0 10px 25px -5px rgba(6, 182, 212, 0.4);
+                margin-bottom: 1.5rem;
+            }
+            .logo-svg {
+                width: 48px;
+                height: 48px;
+                fill: #020617;
+            }
+            h1 {
+                font-family: 'Outfit', sans-serif;
+                font-size: 2.5rem;
+                font-weight: 900;
+                letter-spacing: -0.025em;
+                margin-bottom: 0.5rem;
+                background: linear-gradient(135deg, #ffffff, #94a3b8);
+                -webkit-background-clip: text;
+                -webkit-text-fill-color: transparent;
+            }
+            .subtitle {
+                font-size: 1rem;
+                color: var(--accent-cyan);
+                font-weight: 600;
+                text-transform: uppercase;
+                letter-spacing: 0.1em;
+                margin-bottom: 2rem;
+            }
+            p.description {
+                font-size: 1.05rem;
+                color: var(--text-muted);
+                line-height: 1.6;
+                margin-bottom: 2.5rem;
+            }
+            .grid {
+                display: grid;
+                grid-template-cols: 1fr;
+                gap: 1rem;
+                margin-bottom: 2.5rem;
+                text-align: left;
+            }
+            @media (min-width: 600px) {
+                .grid {
+                    grid-template-cols: 1fr 1fr;
+                }
+            }
+            .grid-item {
+                background: rgba(30, 41, 59, 0.3);
+                border: 1px solid rgba(51, 65, 85, 0.2);
+                border-radius: 16px;
+                padding: 1.25rem;
+                transition: border-color 0.2s ease;
+            }
+            .grid-item:hover {
+                border-color: rgba(6, 182, 212, 0.4);
+            }
+            .grid-title {
+                font-weight: 600;
+                font-size: 0.9rem;
+                color: var(--accent-cyan);
+                margin-bottom: 0.5rem;
+                text-transform: uppercase;
+                letter-spacing: 0.05em;
+            }
+            .grid-content {
+                font-size: 0.95rem;
+                color: var(--text-main);
+            }
+            .routes-container {
+                text-align: left;
+                margin-bottom: 2.5rem;
+            }
+            .routes-title {
+                font-family: 'Outfit', sans-serif;
+                font-size: 1.25rem;
+                font-weight: 700;
+                margin-bottom: 1rem;
+                border-bottom: 1px solid var(--card-border);
+                padding-bottom: 0.5rem;
+                color: #ffffff;
+            }
+            .route-link {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                background: rgba(15, 23, 42, 0.4);
+                border: 1px solid rgba(51, 65, 85, 0.2);
+                padding: 0.75rem 1rem;
+                border-radius: 10px;
+                margin-bottom: 0.5rem;
+                text-decoration: none;
+                color: var(--text-main);
+                font-family: monospace;
+                font-size: 0.9rem;
+                transition: all 0.2s ease;
+            }
+            .route-link:hover {
+                background: rgba(6, 182, 212, 0.1);
+                border-color: var(--accent-cyan);
+                transform: translateX(4px);
+            }
+            .route-method {
+                font-weight: 800;
+                font-size: 0.75rem;
+                padding: 0.2rem 0.5rem;
+                border-radius: 4px;
+                margin-right: 0.75rem;
+            }
+            .method-get {
+                background: rgba(16, 185, 129, 0.15);
+                color: #10b981;
+                border: 1px solid rgba(16, 185, 129, 0.3);
+            }
+            .method-post {
+                background: rgba(59, 130, 246, 0.15);
+                color: #3b82f6;
+                border: 1px solid rgba(59, 130, 246, 0.3);
+            }
+            .route-path {
+                flex-grow: 1;
+                text-align: left;
+            }
+            .route-desc {
+                color: var(--text-muted);
+                font-size: 0.8rem;
+                font-family: 'Inter', sans-serif;
+            }
+            .footer {
+                font-size: 0.75rem;
+                color: var(--text-muted);
+                margin-top: 1rem;
+            }
+            .footer-keyless {
+                color: var(--accent-cyan);
+                font-weight: 600;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="logo-container">
+                <svg class="logo-svg" viewBox="0 0 24 24">
+                    <path d="M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2M12,4A8,8 0 0,1 20,12C20,15.6 17.5,18.6 14.2,19.6C15.3,17.9 16,16 16,14C16,11.5 14,8.5 12,5C10,8.5 8,11.5 8,14C8,16 8.7,17.9 9.8,19.6C6.5,18.6 4,15.6 4,12A8,8 0 0,1 12,4Z"/>
+                </svg>
+            </div>
+            <h1>NEERA</h1>
+            <div class="subtitle">Groundwater Intelligence API</div>
+            <p class="description">
+                A hardened, spatiotemporal hydrology machine learning service forecasting and monitoring seasonal water table fluctuations across Karnataka, India.
+            </p>
+
+            <div class="grid">
+                <div class="grid-item">
+                    <div class="grid-title">Core Forecasting Engine</div>
+                    <div class="grid-content">CatBoost / LightGBM Seasonal Regression Models</div>
+                </div>
+                <div class="grid-item">
+                    <div class="grid-title">Spatial Clustering</div>
+                    <div class="grid-content">KMeans Coordinates Partitioning (803 Active Stations)</div>
+                </div>
+                <div class="grid-item">
+                    <div class="grid-title">Environmental Intelligence</div>
+                    <div class="grid-content">Open-Meteo Meteorology Lags & 90-Day Scenarios Simulator</div>
+                </div>
+                <div class="grid-item">
+                    <div class="grid-title">AI Advisories Overlay</div>
+                    <div class="grid-content">Google Gemini Hydrological Reports & Chat Copilot</div>
+                </div>
+            </div>
+
+            <div class="routes-container">
+                <div class="routes-title">Available REST Endpoints</div>
+                
+                <a href="/health" class="route-link">
+                    <span class="route-method method-get">GET</span>
+                    <span class="route-path">/health</span>
+                    <span class="route-desc">Check system check and models loading status</span>
+                </a>
+                
+                <a href="/api/forecast?station_id=020109B" class="route-link">
+                    <span class="route-method method-get">GET</span>
+                    <span class="route-path">/api/forecast</span>
+                    <span class="route-desc">Fetch 14d trajectory, sustainability indices, and AI advisories</span>
+                </a>
+
+                <div class="route-link" style="cursor: default;">
+                    <span class="route-method method-post">POST</span>
+                    <span class="route-path">/api/copilot/chat</span>
+                    <span class="route-desc">Conversational chat copilot with live aquifer context</span>
+                </div>
+
+                <a href="/api/risk-summary" class="route-link">
+                    <span class="route-method method-get">GET</span>
+                    <span class="route-path">/api/risk-summary</span>
+                    <span class="route-desc">Retrieve spatial mapping clusters and markers metadata</span>
+                </a>
+
+                <a href="/api/alerts" class="route-link">
+                    <span class="route-method method-get">GET</span>
+                    <span class="route-path">/api/alerts</span>
+                    <span class="route-desc">List active warning and critical alert levels</span>
+                </a>
+
+                <a href="/api/geocode?query=Bangalore" class="route-link">
+                    <span class="route-method method-get">GET</span>
+                    <span class="route-path">/api/geocode</span>
+                    <span class="route-desc">Search coordinate pairs and address metadata via location query</span>
+                </a>
+
+                <a href="/api/nearest-station?lat=12.9716&lon=77.5946" class="route-link">
+                    <span class="route-method method-get">GET</span>
+                    <span class="route-path">/api/nearest-station</span>
+                    <span class="route-desc">Find the closest groundwater telemetry station using coordinate pairs</span>
+                </a>
+
+                <a href="/api/environmental-risk?station_id=020109B" class="route-link">
+                    <span class="route-method method-get">GET</span>
+                    <span class="route-path">/api/environmental-risk</span>
+                    <span class="route-desc">Evaluate environmental & depletion hazards for a target well station</span>
+                </a>
+            </div>
+
+            <div class="footer">
+                Model: <span class="footer-keyless">CatBoost Validated (v2.0.0)</span> • Service Ingress: <span class="footer-keyless">SQLite Telemetry</span>
+            </div>
+        </div>
+    </body>
+    </html>
+    """
+    return HTMLResponse(content=html_content, status_code=200)
 
 @app.get("/health")
 def health_check():
