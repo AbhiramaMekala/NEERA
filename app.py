@@ -35,6 +35,10 @@ from trend_forecaster import TrendForecaster
 from alert_engine import AlertEngine
 from geo_service import GeoService
 from sensor_service import SensorService
+from sustainability_engine import SustainabilityEngine
+from crisis_forecaster import CrisisForecaster
+from ai_advisor import AIAdvisor
+from recommendation_engine import RecommendationEngine
 
 ROOT = Path(__file__).resolve().parent
 MODEL_PATH = ROOT / "outputs/models/best_model_validated.pkl"
@@ -138,10 +142,15 @@ trend_forecaster = None
 alert_engine = None
 geo_service = None
 sensor_service = None
+sustainability_engine = None
+crisis_forecaster = None
+ai_advisor = None
+recommendation_engine = None
 
 @app.on_event("startup")
 def startup_event():
     global models, database_df, weather_service, trend_forecaster, alert_engine, geo_service, sensor_service
+    global sustainability_engine, crisis_forecaster, ai_advisor, recommendation_engine
     
     # Environment variable startup checks
     owm_key = os.getenv("OPENWEATHER_API_KEY")
@@ -179,7 +188,14 @@ def startup_event():
     alert_engine = AlertEngine()
     geo_service = GeoService(database_path=DATA_PATH)
     sensor_service = SensorService()
-    print("Near-real-time service layers and geographic resolvers initialized successfully.")
+    
+    # Initialize sustainability & crisis engines
+    sustainability_engine = SustainabilityEngine(database_path=DATA_PATH)
+    crisis_forecaster = CrisisForecaster(warning_threshold=30.0, critical_threshold=50.0, collapse_threshold=70.0)
+    ai_advisor = AIAdvisor()
+    recommendation_engine = RecommendationEngine()
+    
+    print("Near-real-time service layers, geographic resolvers, and sustainability/crisis engines initialized successfully.")
 
 # Pydantic request models
 class FeaturesPayload(BaseModel):
@@ -257,6 +273,13 @@ class PredictionResponse(BaseModel):
     lookup_used: bool
     warnings: List[str]
     model_version: str
+
+class ChatCopilotRequest(BaseModel):
+    user_question: str
+    station_id: Optional[str] = None
+    lat: Optional[float] = None
+    lon: Optional[float] = None
+    query: Optional[str] = None
 
 @app.get("/health")
 def health_check():
@@ -475,6 +498,8 @@ def get_forecast(
     query: Optional[str] = None
 ):
     global trend_forecaster, geo_service, database_df, weather_service, alert_engine
+    global sustainability_engine, crisis_forecaster, ai_advisor, recommendation_engine
+    
     if trend_forecaster is None or database_df is None or geo_service is None or weather_service is None or alert_engine is None:
         raise HTTPException(status_code=503, detail="Forecast services or database are unavailable.")
 
@@ -560,13 +585,59 @@ def get_forecast(
         mapping["latitude"] = resolved_lat
         mapping["longitude"] = resolved_lon
         
+        # Compute sustainability metrics
+        sustainability = sustainability_engine.compute_sustainability(
+            station_id=target_station_id,
+            current_gw=current_gw,
+            forecast_rain_7d=fc["forecast_rainfall_accumulation_7d"],
+            depletion_rate=fc["depletion_rate_m_day"],
+            recent_rain_180d=recent_rain_180d
+        )
+        
+        # Calculate crisis timeline
+        crisis = crisis_forecaster.calculate_crisis_timeline(
+            current_gw=current_gw,
+            depletion_rate=fc["depletion_rate_m_day"],
+            forecast_rain_7d=fc["forecast_rainfall_accumulation_7d"],
+            long_term_slope=sustainability["metrics"]["long_term_depletion_slope_m_yr"]
+        )
+        
+        # Get AI commentary/advisory
+        weather_desc = weather.get("current", {}).get("weather_description", "clear sky")
+        rdi = sustainability["metrics"]["rainfall_deficit_index"]
+        
+        ai_commentary = ai_advisor.get_sustainability_advisory(
+            station_id=target_station_id,
+            gw_level=current_gw,
+            status=sustainability["sustainability_status"],
+            days_warn=crisis["days_to_warning"],
+            days_crit=crisis["days_to_critical"],
+            days_coll=crisis["days_to_collapse"],
+            sust_score=sustainability["sustainability_score"],
+            weather_desc=weather_desc,
+            rdi=rdi
+        )
+        
+        # Get recommendations
+        temp = weather.get("current", {}).get("temperature", 25.0)
+        recs = recommendation_engine.get_recommendations(
+            status=sustainability["sustainability_status"],
+            weather_desc=weather_desc,
+            rdi=rdi,
+            temp=temp
+        )
+        
         return {
             "disable_prediction": False,
             "resolved_location": resolved_name,
             "nearest_station": mapping,
             "weather": weather,
             "forecast": fc,
-            "alert": alert
+            "alert": alert,
+            "sustainability": sustainability,
+            "crisis": crisis,
+            "ai_commentary": ai_commentary,
+            "recommendations": recs
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Inference failure: {str(e)}")
@@ -801,6 +872,111 @@ def get_sensor_history_endpoint(sensor_id: str, limit: int = 50):
         return res
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/copilot/chat")
+def post_copilot_chat(req: ChatCopilotRequest):
+    global trend_forecaster, database_df, geo_service, weather_service, sustainability_engine, crisis_forecaster, ai_advisor
+    if not ai_advisor:
+        raise HTTPException(status_code=503, detail="Copilot chat service is unavailable.")
+
+    # We try to get context if station or coordinates are specified
+    context = {}
+    
+    # Resolve the station id if we can
+    target_station_id = req.station_id
+    resolved_lat, resolved_lon = req.lat, req.lon
+    resolved_name = ""
+
+    # Reuse resolution logic if query/lat/lon/station_id provided
+    try:
+        if req.query:
+            geo_res = geo_service.geocode(req.query)
+            resolved_lat = geo_res["lat"]
+            resolved_lon = geo_res["lon"]
+            resolved_name = geo_res["display_name"]
+        elif req.lat is not None and req.lon is not None:
+            resolved_lat = req.lat
+            resolved_lon = req.lon
+            resolved_name = f"Coordinates ({req.lat:.4f}, {req.lon:.4f})"
+        
+        if resolved_lat is not None and resolved_lon is not None:
+            mapping = geo_service.resolve_nearest_station(resolved_lat, resolved_lon)
+            if mapping and not mapping.get("disable_prediction", False):
+                target_station_id = mapping["station_id"]
+        
+        if not target_station_id and database_df is not None and not database_df.empty:
+            # Default to the first station in the database if nothing is specified or found
+            target_station_id = str(database_df["station_id"].iloc[0])
+            resolved_name = f"Station {target_station_id} (Default)"
+            
+        if target_station_id and database_df is not None:
+            station_rows = database_df[database_df["station_id"] == target_station_id]
+            if len(station_rows) > 0:
+                history = station_rows.sort_values(by="date", ascending=False)
+                latest_row = history.iloc[0]
+                current_gw = float(latest_row["Groundwater_Level_MBGL"])
+                
+                prev_gw = None
+                if len(history) > 1:
+                    prev_gw = float(history.iloc[1]["Groundwater_Level_MBGL"])
+                else:
+                    prev_gw = float(latest_row.get("prev_gw", current_gw))
+
+                recent_rain_180d = float(latest_row.get("effective_rainfall_180d", 200.0))
+                
+                # Fetch weather
+                try:
+                    if resolved_lat is not None and resolved_lon is not None:
+                        weather = weather_service.get_weather_by_coordinates(resolved_lat, resolved_lon, target_station_id)
+                    else:
+                        weather = weather_service.get_weather_by_station(target_station_id)
+                except Exception:
+                    weather = weather_service.get_weather_by_station(target_station_id)
+
+                fc = trend_forecaster.forecast_short_term(
+                    station_id=target_station_id,
+                    current_gw=current_gw,
+                    prev_gw=prev_gw,
+                    recent_rain_180d=recent_rain_180d
+                )
+                
+                sust = sustainability_engine.compute_sustainability(
+                    station_id=target_station_id,
+                    current_gw=current_gw,
+                    forecast_rain_7d=fc["forecast_rainfall_accumulation_7d"],
+                    depletion_rate=fc["depletion_rate_m_day"],
+                    recent_rain_180d=recent_rain_180d
+                )
+                
+                crisis = crisis_forecaster.calculate_crisis_timeline(
+                    current_gw=current_gw,
+                    depletion_rate=fc["depletion_rate_m_day"],
+                    forecast_rain_7d=fc["forecast_rainfall_accumulation_7d"],
+                    long_term_slope=sust["metrics"]["long_term_depletion_slope_m_yr"]
+                )
+                
+                context = {
+                    "station_id": target_station_id,
+                    "location_name": resolved_name or f"Station {target_station_id}",
+                    "current_groundwater_mbgl": current_gw,
+                    "sustainability_score": sust["sustainability_score"],
+                    "sustainability_status": sust["sustainability_status"],
+                    "long_term_depletion_slope_m_yr": sust["metrics"]["long_term_depletion_slope_m_yr"],
+                    "weather": weather.get("current", {}),
+                    "days_to_warning_threshold": crisis["days_to_warning"],
+                    "days_to_critical_threshold": crisis["days_to_critical"],
+                    "days_to_collapse_threshold": crisis["days_to_collapse"],
+                    "depletion_acceleration": crisis["depletion_acceleration"]
+                }
+    except Exception as e:
+        print(f"Error compiling context for copilot chat: {e}")
+        # Proceed with empty/partial context if resolution failed
+        
+    answer = ai_advisor.answer_copilot_chat(context, req.user_question)
+    return {
+        "answer": answer,
+        "context_used": context
+    }
 
 if __name__ == "__main__":
     import uvicorn

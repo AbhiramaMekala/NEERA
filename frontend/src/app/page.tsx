@@ -185,7 +185,6 @@ export default function Dashboard() {
 
   // Connection & IoT telemetry
   const [apiStatus, setApiStatus] = useState<"connected" | "disconnected" | "checking">("checking");
-  const [iotSensors, setIotSensors] = useState<IotSensor[]>([]);
 
   // Telemetry States
   const [weather, setWeather] = useState<WeatherData | null>(null);
@@ -195,15 +194,28 @@ export default function Dashboard() {
   const [alerts, setAlerts] = useState<AlertData[]>([]);
   const [envRisk, setEnvRisk] = useState<EnvRisk | null>(null);
   
+  // Sustainability & Crisis Intelligence States
+  const [sustainability, setSustainability] = useState<any | null>(null);
+  const [crisis, setCrisis] = useState<any | null>(null);
+  const [aiCommentary, setAiCommentary] = useState<string>("");
+  const [recommendations, setRecommendations] = useState<string[]>([]);
+  
+  // Simulator States
+  const [simScenario, setSimScenario] = useState<string>("normal");
+  const [simReduction, setSimReduction] = useState<number>(0);
+
+  // Copilot Chat States
+  const [chatOpen, setChatOpen] = useState<boolean>(false);
+  const [chatMessages, setChatMessages] = useState<Array<{ sender: "user" | "bot"; text: string }>>([
+    { sender: "bot", text: "Hello! I am the NEERA Hydro-Advisor. Ask me anything about groundwater sustainability, crop selection, or water policies in this region." }
+  ]);
+  const [chatInput, setChatInput] = useState<string>("");
+  const [chatLoading, setChatLoading] = useState<boolean>(false);
+  
   // UI states
   const [loading, setLoading] = useState<boolean>(true);
   const [refreshing, setRefreshing] = useState<boolean>(false);
   const [geocoding, setGeocoding] = useState<boolean>(false);
-  const [isLiveTelemetry, setIsLiveTelemetry] = useState<boolean>(false);
-  const [telemetryLogs, setTelemetryLogs] = useState<string[]>([]);
-  
-  const telemetryIntervalRef = useRef<NodeJS.Timeout | null>(null);
-  const telemetryEndRef = useRef<HTMLDivElement | null>(null);
 
   // Check API health periodically
   const checkApiHealth = async () => {
@@ -253,74 +265,6 @@ export default function Dashboard() {
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
-  // Live Telemetry simulation pushing POST payloads to SQLite
-  useEffect(() => {
-    if (isLiveTelemetry) {
-      addTelemetryLog("Telemetry Service: Activating automated IoT ingestion client...");
-      addTelemetryLog("Telemetry Service: Initializing HTTP POST ingestion broker...");
-      
-      telemetryIntervalRef.current = setInterval(async () => {
-        const sensorId = `iot-${selectedStation.substring(0, 5).toLowerCase()}`;
-        const payload = {
-          sensor_id: sensorId,
-          lat: weather ? weather.latitude : 15.3173,
-          lon: weather ? weather.longitude : 75.7139,
-          water_level: Number((10 + Math.random() * 25).toFixed(2)),
-          battery: Math.random() < 0.05 ? 15 : Math.floor(80 + Math.random() * 20),
-          temperature: Number((24 + Math.random() * 6).toFixed(1)),
-          humidity: Math.floor(50 + Math.random() * 40),
-          timestamp: new Date().toISOString()
-        };
-
-        try {
-          const res = await fetch(`${API_BASE_URL}/api/sensors/ingest`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json"
-            },
-            body: JSON.stringify(payload)
-          });
-          if (res.ok) {
-            const timeStr = new Date().toLocaleTimeString();
-            addTelemetryLog(
-              `[${timeStr}] Ingested payload for ${payload.sensor_id}: ` + 
-              `Depth=${payload.water_level}m | Batt=${payload.battery}% | Temp=${payload.temperature}°C`
-            );
-            
-            // Refresh sensor list
-            const listRes = await fetch(`${API_BASE_URL}/api/sensors/latest`);
-            if (listRes.ok) {
-              const list = await listRes.json();
-              setIotSensors(list);
-            }
-          }
-        } catch (err) {
-          console.error("Sensor ingestion failed:", err);
-          addTelemetryLog(`Ingest Error: Failed to push telemetry to SQLite. API offline.`);
-        }
-      }, 4000);
-    } else {
-      if (telemetryIntervalRef.current) {
-        clearInterval(telemetryIntervalRef.current);
-      }
-      addTelemetryLog("Live telemetry push client stopped.");
-    }
-    return () => {
-      if (telemetryIntervalRef.current) clearInterval(telemetryIntervalRef.current);
-    };
-  }, [isLiveTelemetry, selectedStation, weather]);
-
-  // Auto-scroll telemetry log console
-  useEffect(() => {
-    if (telemetryEndRef.current) {
-      telemetryEndRef.current.scrollIntoView({ behavior: "smooth" });
-    }
-  }, [telemetryLogs]);
-
-  const addTelemetryLog = (msg: string) => {
-    setTelemetryLogs(prev => [...prev.slice(-49), msg]);
-  };
-
   const fetchBaseData = async () => {
     try {
       const summaryRes = await fetch(`${API_BASE_URL}/api/risk-summary`);
@@ -330,15 +274,8 @@ export default function Dashboard() {
       const alertsRes = await fetch(`${API_BASE_URL}/api/alerts?limit=15`);
       const alertsList = await alertsRes.json();
       setAlerts(alertsList);
-
-      const listRes = await fetch(`${API_BASE_URL}/api/sensors/latest`);
-      if (listRes.ok) {
-        const list = await listRes.json();
-        setIotSensors(list);
-      }
     } catch (e) {
       console.error("Error fetching base listings:", e);
-      addTelemetryLog("Network Error: Failed to contact NEERA FastAPI backend server.");
     }
   };
 
@@ -351,7 +288,6 @@ export default function Dashboard() {
       else if (params.lat !== undefined && params.lon !== undefined) queryString = `lat=${params.lat}&lon=${params.lon}`;
       else if (params.query) queryString = `query=${encodeURIComponent(params.query)}`;
 
-      addTelemetryLog("API Request: Resolving forecast data for query/coords...");
       const res = await fetch(`${API_BASE_URL}/api/forecast?${queryString}`);
       if (!res.ok) {
         throw new Error(`Inference service error: ${res.statusText}`);
@@ -373,8 +309,10 @@ export default function Dashboard() {
         setWeather(null);
         setEnvRisk(null);
         setHistory([]);
-        
-        addTelemetryLog(`Boundary Error: Resolved location is ${data.distance_km}km from nearest station (limit: 250km).`);
+        setSustainability(null);
+        setCrisis(null);
+        setAiCommentary("");
+        setRecommendations([]);
         return;
       }
 
@@ -384,6 +322,10 @@ export default function Dashboard() {
       setSelectedStation(data.nearest_station.station_id);
       setForecast(data.forecast);
       setWeather(data.weather);
+      setSustainability(data.sustainability);
+      setCrisis(data.crisis);
+      setAiCommentary(data.ai_commentary);
+      setRecommendations(data.recommendations);
       
       setEnvRisk({
         station_id: data.nearest_station.station_id,
@@ -409,11 +351,8 @@ export default function Dashboard() {
         setHistory([]);
       }
       
-      addTelemetryLog(`Forecast updated successfully for ${data.nearest_station.station_id} (${data.resolved_location}).`);
-
     } catch (e: any) {
       console.error(e);
-      addTelemetryLog(`Inference Error: ${e.message}`);
     } finally {
       setRefreshing(false);
       setLoading(false);
@@ -426,36 +365,107 @@ export default function Dashboard() {
     
     setGeocoding(true);
     setShowSuggestions(false);
-    addTelemetryLog(`Geocoding Search: Locating '${searchQuery}'...`);
     await fetchLocationData({ query: searchQuery });
     setGeocoding(false);
   };
 
   const handleUseMyLocation = () => {
     if (!navigator.geolocation) {
-      addTelemetryLog("Geolocation Error: Browser does not support GPS features.");
+      console.error("Geolocation Error: Browser does not support GPS features.");
       return;
     }
 
-    addTelemetryLog("Geolocation: Accessing browser device coordinates...");
     navigator.geolocation.getCurrentPosition(
       async (pos) => {
         const lat = pos.coords.latitude;
         const lon = pos.coords.longitude;
         setSearchQuery(`${lat.toFixed(4)}, ${lon.toFixed(4)}`);
-        addTelemetryLog(`Device coordinates acquired: Lat ${lat.toFixed(4)}, Lon ${lon.toFixed(4)}.`);
         await fetchLocationData({ lat, lon });
       },
       (err) => {
-        addTelemetryLog(`Geolocation Error: Access denied.`);
+        console.error("Geolocation Error: Access denied.");
       }
     );
   };
 
   const handleMapClick = async (lat: number, lon: number) => {
-    addTelemetryLog(`Map Clicked: Reverse geocoding coords lat=${lat.toFixed(4)}, lon=${lon.toFixed(4)}...`);
     setSearchQuery(`${lat.toFixed(4)}, ${lon.toFixed(4)}`);
     await fetchLocationData({ lat, lon });
+  };
+  
+  const runScenarioSimulation = (scenario: string, pumpingReduction: number) => {
+    if (!forecast || !sustainability) return [];
+    const currentGw = forecast.current_gw;
+    const depletionRate = forecast.depletion_rate_m_day;
+    const forecastRain7d = forecast.forecast_rainfall_accumulation_7d;
+    
+    const rechargeCoeff = currentGw < 20.0 ? 0.08 : 0.02;
+    
+    const scenariosConfig: Record<string, { rainMult: number; extractionMult: number }> = {
+      normal: { rainMult: 1.0, extractionMult: 1.0 },
+      drought: { rainMult: 0.0, extractionMult: 1.2 },
+      monsoon: { rainMult: 1.5, extractionMult: 0.5 },
+      heatwave: { rainMult: 0.5, extractionMult: 1.4 }
+    };
+    
+    const config = scenariosConfig[scenario] || scenariosConfig.normal;
+    const pReductionFactor = 1.0 - (pumpingReduction / 100.0);
+    const adjustedExtractionMult = config.extractionMult * pReductionFactor;
+    
+    let runningGw = currentGw;
+    const trajectory: number[] = [];
+    
+    for (let day = 1; day <= 90; day++) {
+      const dailyRain = (forecastRain7d / 7.0) * config.rainMult;
+      const dailyRecharge = dailyRain * rechargeCoeff;
+      const dailyDrawdown = depletionRate * adjustedExtractionMult;
+      
+      runningGw = runningGw + dailyDrawdown - dailyRecharge;
+      runningGw = Math.max(0.0, runningGw);
+      trajectory.push(Number(runningGw.toFixed(3)));
+    }
+    return trajectory;
+  };
+
+  const renderInlineBold = (text: string) => {
+    const parts = text.split(/\*\*(.*?)\*\*/g);
+    return parts.map((part, i) => i % 2 === 1 ? <strong key={i} className="text-white font-bold">{part}</strong> : part);
+  };
+
+  const renderMarkdown = (text: string) => {
+    if (!text) return null;
+    const lines = text.split("\n");
+    return lines.map((line, idx) => {
+      const trimmed = line.trim();
+      if (trimmed.startsWith("###")) {
+        return <h4 key={idx} className="text-sm font-bold text-cyan-400 mt-4 mb-2 uppercase tracking-wide">{trimmed.replace(/^###\s*/, "")}</h4>;
+      }
+      if (trimmed.startsWith("##")) {
+        return <h3 key={idx} className="text-base font-black text-white mt-5 mb-2 border-b border-slate-800 pb-1">{trimmed.replace(/^##\s*/, "")}</h3>;
+      }
+      if (trimmed.startsWith("#")) {
+        return <h2 key={idx} className="text-lg font-black text-white mt-6 mb-3">{trimmed.replace(/^#\s*/, "")}</h2>;
+      }
+      if (trimmed.startsWith("-") || trimmed.startsWith("*")) {
+        const content = trimmed.replace(/^[-*]\s*/, "");
+        return (
+          <li key={idx} className="text-xs text-slate-350 list-disc list-inside ml-2 my-1">
+            {renderInlineBold(content)}
+          </li>
+        );
+      }
+      if (trimmed.startsWith("1.") || trimmed.startsWith("2.") || trimmed.startsWith("3.") || trimmed.startsWith("4.")) {
+        const content = trimmed.replace(/^\d+\.\s*/, "");
+        return (
+          <div key={idx} className="text-xs text-slate-350 my-1 flex gap-2">
+            <span className="font-bold text-cyan-500">{trimmed.match(/^\d+/)?.[0]}.</span>
+            <span>{renderInlineBold(content)}</span>
+          </div>
+        );
+      }
+      if (!trimmed) return <div key={idx} className="h-2"></div>;
+      return <p key={idx} className="text-xs text-slate-350 leading-relaxed my-1.5">{renderInlineBold(trimmed)}</p>;
+    });
   };
 
   const getProjectionsChartData = () => {
@@ -577,14 +587,6 @@ export default function Dashboard() {
               <Navigation className="w-3.5 h-3.5" />
               <span>Use My Location</span>
             </button>
-
-            <button
-              onClick={() => setIsLiveTelemetry(!isLiveTelemetry)}
-              className={`px-4 py-2.5 text-xs rounded-lg border font-bold flex items-center gap-1.5 transition-all cursor-pointer ${isLiveTelemetry ? "bg-red-500/10 text-red-400 border-red-500/30 hover:bg-red-500/20" : "bg-cyan-500/10 text-cyan-400 border-cyan-500/30 hover:bg-cyan-500/20"}`}
-            >
-              <Activity className={`w-3.5 h-3.5 ${isLiveTelemetry ? "animate-pulse" : ""}`} />
-              <span>{isLiveTelemetry ? "Disconnect Telemetry" : "Stream Telemetry"}</span>
-            </button>
           </div>
         </div>
       </header>
@@ -640,6 +642,142 @@ export default function Dashboard() {
                 </div>
               )}
             </div>
+
+            {/* Sustainability & Crisis Intelligence Card */}
+            {sustainability && crisis && (
+              <div className="bg-slate-900/60 border border-slate-800/80 rounded-xl p-5 backdrop-blur-md flex flex-col gap-5">
+                <div className="flex items-center justify-between border-b border-slate-800/60 pb-2">
+                  <h3 className="text-xs font-bold uppercase text-slate-400 flex items-center gap-1.5 font-sans">
+                    <Activity className="w-4 h-4 text-cyan-400" />
+                    Sustainability & Crisis Index
+                  </h3>
+                  <span className="text-[10px] text-slate-500 bg-slate-950 px-2 py-0.5 rounded border border-slate-850">Real-time Overlay</span>
+                </div>
+
+                {/* Flex Row for Gauge and Score Details */}
+                <div className="flex flex-col sm:flex-row items-center gap-6">
+                  {/* SVG Circular Gauge */}
+                  <div className="relative w-28 h-28 shrink-0">
+                    <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
+                      <circle
+                        cx="50"
+                        cy="50"
+                        r="42"
+                        stroke="#1e293b"
+                        strokeWidth="8"
+                        fill="transparent"
+                      />
+                      <circle
+                        cx="50"
+                        cy="50"
+                        r="42"
+                        stroke={
+                          sustainability.sustainability_status === "STABLE" ? "#10b981" :
+                          sustainability.sustainability_status === "STRESSED" ? "#f59e0b" :
+                          sustainability.sustainability_status === "DEPLETING" ? "#f97316" :
+                          sustainability.sustainability_status === "CRITICAL" ? "#ef4444" : "#a855f7"
+                        }
+                        strokeWidth="8"
+                        fill="transparent"
+                        strokeDasharray={2 * Math.PI * 42}
+                        strokeDashoffset={2 * Math.PI * 42 * (1 - sustainability.sustainability_score / 100)}
+                        strokeLinecap="round"
+                        className="transition-all duration-1000 ease-out"
+                      />
+                    </svg>
+                    <div className="absolute inset-0 flex flex-col items-center justify-center">
+                      <span className="text-2xl font-black text-slate-100">{sustainability.sustainability_score}</span>
+                      <span className="text-[9px] text-slate-500 font-bold uppercase tracking-wider">Score</span>
+                    </div>
+                  </div>
+
+                  {/* Sustainability Status Details */}
+                  <div className="flex-1 text-center sm:text-left">
+                    <span className="text-xs text-slate-500 block font-semibold">Aquifer Health Status</span>
+                    <span className={`text-xl font-black tracking-tight ${
+                      sustainability.sustainability_status === "STABLE" ? "text-emerald-450" :
+                      sustainability.sustainability_status === "STRESSED" ? "text-amber-450" :
+                      sustainability.sustainability_status === "DEPLETING" ? "text-orange-450" :
+                      sustainability.sustainability_status === "CRITICAL" ? "text-red-450" : "text-purple-400"
+                    }`}>
+                      {sustainability.sustainability_status}
+                    </span>
+                    <p className="text-xs text-slate-450 leading-relaxed mt-2">
+                      {sustainability.sustainability_status === "STABLE" && "The groundwater systems are in equilibrium. Aquifer recharge matches extraction draws."}
+                      {sustainability.sustainability_status === "STRESSED" && "Aquifer systems show warning flags. Localized pumping drawdowns exceed normal seasonal recharge."}
+                      {sustainability.sustainability_status === "DEPLETING" && "Aquifer water table is dropping steadily. Heavy extraction rates are threatening long-term stability."}
+                      {sustainability.sustainability_status === "CRITICAL" && "Severe groundwater deficit. Critical well depletion detected with immediate intervention required."}
+                      {sustainability.sustainability_status === "COLLAPSE RISK" && "Aquifer is at risk of complete dry-well collapse. Immediate halt of agricultural pumping recommended."}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Crisis Timeline Progress Bars */}
+                <div className="border-t border-slate-800/60 pt-4 flex flex-col gap-3">
+                  <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Crisis Threshold Timelines</span>
+
+                  {/* Warning Timeline */}
+                  <div className="flex flex-col gap-1.5">
+                    <div className="flex justify-between text-xs">
+                      <span className="text-slate-400 font-medium">Warning Threshold (30m MBGL)</span>
+                      <span className={`font-semibold ${crisis.days_to_warning === 0 ? "text-red-400" : crisis.days_to_warning > 90 ? "text-green-400" : "text-orange-450"}`}>
+                        {crisis.days_to_warning === 0 ? "Already Breached" : crisis.days_to_warning > 90 ? "Safe (>90 Days)" : `${crisis.days_to_warning} Days`}
+                      </span>
+                    </div>
+                    <div className="w-full bg-slate-950 h-2 rounded-full overflow-hidden border border-slate-900">
+                      <div
+                        className={`h-full rounded-full transition-all duration-1000 ${
+                          crisis.days_to_warning === 0 ? "bg-red-500" : crisis.days_to_warning > 90 ? "bg-green-500 w-1/5" : "bg-orange-500"
+                        }`}
+                        style={{
+                          width: crisis.days_to_warning === 0 ? "100%" : crisis.days_to_warning > 90 ? "20%" : `${Math.max(10, 100 - (crisis.days_to_warning / 90) * 80)}%`
+                        }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Critical Timeline */}
+                  <div className="flex flex-col gap-1.5">
+                    <div className="flex justify-between text-xs">
+                      <span className="text-slate-400 font-medium">Critical Threshold (50m MBGL)</span>
+                      <span className={`font-semibold ${crisis.days_to_critical === 0 ? "text-red-500 font-bold" : crisis.days_to_critical > 90 ? "text-green-400" : "text-red-450"}`}>
+                        {crisis.days_to_critical === 0 ? "Already Breached" : crisis.days_to_critical > 90 ? "Safe (>90 Days)" : `${crisis.days_to_critical} Days`}
+                      </span>
+                    </div>
+                    <div className="w-full bg-slate-950 h-2 rounded-full overflow-hidden border border-slate-900">
+                      <div
+                        className={`h-full rounded-full transition-all duration-1000 ${
+                          crisis.days_to_critical === 0 ? "bg-red-650" : crisis.days_to_critical > 90 ? "bg-green-500 w-1/10" : "bg-red-500"
+                        }`}
+                        style={{
+                          width: crisis.days_to_critical === 0 ? "100%" : crisis.days_to_critical > 90 ? "10%" : `${Math.max(10, 100 - (crisis.days_to_critical / 90) * 90)}%`
+                        }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Collapse Timeline */}
+                  <div className="flex flex-col gap-1.5">
+                    <div className="flex justify-between text-xs">
+                      <span className="text-slate-400 font-medium">Collapse Threshold (70m MBGL)</span>
+                      <span className={`font-semibold ${crisis.days_to_collapse === 0 ? "text-red-750 font-black" : crisis.days_to_collapse > 90 ? "text-green-400" : "text-red-500"}`}>
+                        {crisis.days_to_collapse === 0 ? "Already Breached" : crisis.days_to_collapse > 90 ? "Safe (>90 Days)" : `${crisis.days_to_collapse} Days`}
+                      </span>
+                    </div>
+                    <div className="w-full bg-slate-950 h-2 rounded-full overflow-hidden border border-slate-900">
+                      <div
+                        className={`h-full rounded-full transition-all duration-1000 ${
+                          crisis.days_to_collapse === 0 ? "bg-purple-600" : crisis.days_to_collapse > 90 ? "bg-green-500 w-1/20" : "bg-purple-500"
+                        }`}
+                        style={{
+                          width: crisis.days_to_collapse === 0 ? "100%" : crisis.days_to_collapse > 90 ? "5%" : `${Math.max(10, 100 - (crisis.days_to_collapse / 90) * 95)}%`
+                        }}
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Error state card if station is out of bounds (> 250km) */}
             {errorState && (
@@ -731,82 +869,6 @@ export default function Dashboard() {
               )}
             </div>
 
-            {/* IoT Grid Status Panel */}
-            <div className="bg-slate-900/60 border border-slate-800/80 rounded-xl p-5 backdrop-blur-md">
-              <div className="flex items-center justify-between mb-3 border-b border-slate-800/60 pb-2">
-                <h3 className="text-xs font-bold uppercase text-slate-400 flex items-center gap-1.5 font-sans">
-                  <Database className="w-4 h-4 text-cyan-400" />
-                  IoT Sensor Telemetry Grid
-                </h3>
-                <span className="text-[10px] text-slate-500 bg-slate-950 px-2 py-0.5 rounded border border-slate-850">SQLite Persistent</span>
-              </div>
-              {iotSensors.length === 0 ? (
-                <div className="text-[11px] text-slate-500 p-2 text-center">No active physical IoT sensors registered in database.</div>
-              ) : (
-                <div className="space-y-2.5 max-h-48 overflow-y-auto pr-1">
-                  {iotSensors.map((s, idx) => (
-                    <div key={idx} className="bg-slate-950/60 border border-slate-900 p-2.5 rounded-lg flex flex-col gap-1.5 transition-all hover:border-slate-850">
-                      <div className="flex justify-between items-center text-xs">
-                        <div className="flex items-center gap-1.5">
-                          <span className={`w-1.5 h-1.5 rounded-full ${s.status === "online" ? "bg-green-500 animate-pulse" : "bg-slate-600"}`}></span>
-                          <span className="font-bold text-slate-200">{s.sensor_id}</span>
-                        </div>
-                        <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold ${s.status === "online" ? "bg-green-950/80 text-green-400" : "bg-red-950/80 text-red-405"}`}>
-                          {s.status.toUpperCase()}
-                        </span>
-                      </div>
-                      <div className="grid grid-cols-3 gap-2 text-[10px] text-slate-500 border-t border-slate-900 pt-1.5 mt-0.5">
-                        <div>
-                          <span className="block text-[8px] uppercase text-slate-600 font-sans">Water Lvl</span>
-                          <span className="font-semibold text-slate-300">{s.latest_reading?.water_level_mbgl?.toFixed(2) || "N/A"}m</span>
-                        </div>
-                        <div>
-                          <span className="block text-[8px] uppercase text-slate-600 font-sans">Battery</span>
-                          <span className={`font-semibold ${s.latest_reading?.battery_pct !== undefined && s.latest_reading.battery_pct < 20 ? "text-red-400 animate-pulse font-bold" : "text-slate-300"}`}>
-                            {s.latest_reading?.battery_pct !== undefined ? `${s.latest_reading.battery_pct}%` : "N/A"}
-                          </span>
-                        </div>
-                        <div>
-                          <span className="block text-[8px] uppercase text-slate-600 font-sans">Temperature</span>
-                          <span className="font-semibold text-slate-300">{s.latest_reading?.temperature_c !== undefined ? `${s.latest_reading.temperature_c.toFixed(1)}°C` : "N/A"}</span>
-                        </div>
-                      </div>
-                      {s.alerts && s.alerts.length > 0 && (
-                        <div className="text-[9px] text-red-400 bg-red-950/20 border border-red-900/30 p-1.5 rounded mt-1 space-y-0.5">
-                          {s.alerts.map((al: string, i: number) => (
-                            <div key={i} className="flex gap-1 items-start">
-                              <AlertTriangle className="w-2.5 h-2.5 text-red-500 mt-0.5 shrink-0" />
-                              <span>{al}</span>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* Live Telemetry Logger Console */}
-            <div className="bg-slate-900/60 border border-slate-800/80 rounded-xl p-5 backdrop-blur-md flex-1 flex flex-col min-h-[160px]">
-              <div className="flex items-center justify-between mb-3 border-b border-slate-800/60 pb-2">
-                <h3 className="text-xs font-bold uppercase text-slate-400 flex items-center gap-1.5 font-sans">
-                  <Activity className="w-4 h-4 text-cyan-400" />
-                  Telemetry Log Receiver
-                </h3>
-                <span className={`w-2 h-2 rounded-full ${isLiveTelemetry ? "bg-green-500 animate-pulse" : "bg-slate-700"}`}></span>
-              </div>
-              
-              <div className="bg-slate-950 font-mono text-[10px] p-3 rounded-lg overflow-y-auto max-h-48 xl:max-h-[220px] flex-1 text-cyan-500/80 space-y-1 leading-relaxed border border-slate-900 shadow-inner">
-                {telemetryLogs.map((log, i) => (
-                  <div key={i} className={log.includes("Error") ? "text-red-400" : log.includes("ingestion") || log.includes("Ingested") ? "text-yellow-450 font-bold" : ""}>
-                    {log}
-                  </div>
-                ))}
-                <div ref={telemetryEndRef} />
-              </div>
-            </div>
-
           </div>
 
           {/* RIGHT GRID CONTENT - Trajectory forecasts, weather summaries, alert logs (7 Columns) */}
@@ -868,6 +930,40 @@ export default function Dashboard() {
               )}
             </div>
 
+            {/* AI Analyst & Advisory Panel */}
+            {aiCommentary && (
+              <div className="bg-slate-900/60 border border-slate-800/80 rounded-xl p-5 backdrop-blur-md flex flex-col gap-4">
+                <div className="flex items-center gap-2 border-b border-slate-800/60 pb-2.5">
+                  <Droplet className="w-5 h-5 text-cyan-400" />
+                  <h3 className="text-base font-bold text-slate-200 font-sans">AI Hydrological Commentary & Crop Advisories</h3>
+                </div>
+                
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                  {/* Commentary text (7 Columns) */}
+                  <div className="lg:col-span-7 bg-slate-950/40 border border-slate-850 p-4 rounded-xl overflow-y-auto max-h-[350px]">
+                    {renderMarkdown(aiCommentary)}
+                  </div>
+
+                  {/* Recommendations & advisories list (5 Columns) */}
+                  <div className="lg:col-span-5 flex flex-col gap-3">
+                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block font-sans">Active Recommendations</span>
+                    <div className="flex-1 flex flex-col gap-2">
+                      {recommendations.length === 0 ? (
+                        <div className="text-[11px] text-slate-500 p-2 text-center font-sans">No recommendations generated for this site.</div>
+                      ) : (
+                        recommendations.map((rec, i) => (
+                          <div key={i} className="bg-slate-950/60 border border-slate-900 p-3 rounded-lg flex items-start gap-2.5 text-xs text-slate-350 leading-relaxed font-sans">
+                            <CheckCircle className="w-4 h-4 text-emerald-550 stroke-[2] shrink-0 mt-0.5" />
+                            <span>{rec}</span>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Recharts chart showing 14-day projection trajectory and confidence intervals */}
             <div className="bg-slate-900/60 border border-slate-800/80 rounded-xl p-5 backdrop-blur-md">
               <h3 className="text-sm font-bold uppercase text-slate-400 mb-4 flex items-center gap-1.5 font-sans">
@@ -895,6 +991,88 @@ export default function Dashboard() {
                 )}
               </div>
             </div>
+
+            {/* Interactive Scenario Simulator Card */}
+            {forecast && sustainability && (
+              <div className="bg-slate-900/60 border border-slate-800/80 rounded-xl p-5 backdrop-blur-md flex flex-col gap-5">
+                <div>
+                  <h3 className="text-sm font-bold uppercase text-slate-400 mb-1 flex items-center gap-1.5 font-sans">
+                    <TrendingUp className="w-4.5 h-4.5 text-cyan-500" />
+                    90-Day Interactive Meteorological Scenario Simulator
+                  </h3>
+                  <p className="text-[11px] text-slate-500 leading-relaxed font-sans">
+                    Select climatological scenarios and test local crop extraction/pumping reduction policies to visualize 90-day aquifer trends.
+                  </p>
+                </div>
+
+                {/* Simulation Inputs */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-slate-950/40 border border-slate-850 p-4 rounded-xl">
+                  <div className="flex flex-col gap-2">
+                    <label className="text-[10px] font-bold uppercase text-slate-500 font-sans">Climatological Scenario</label>
+                    <select
+                      value={simScenario}
+                      onChange={(e) => setSimScenario(e.target.value)}
+                      className="bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-350 outline-none focus:border-cyan-500 font-sans"
+                    >
+                      <option value="normal">Normal (Forecast Rain, Nominal Draw)</option>
+                      <option value="drought">Drought (0% Rainfall, +20% Extraction Draw)</option>
+                      <option value="monsoon">Heavy Monsoon (+50% Rainfall, -30% Extraction Draw)</option>
+                      <option value="heatwave">Extreme Heatwave (-50% Rainfall, +40% Extraction Draw)</option>
+                    </select>
+                  </div>
+
+                  <div className="flex flex-col gap-2">
+                    <div className="flex justify-between">
+                      <label className="text-[10px] font-bold uppercase text-slate-500 font-sans">Agricultural Pumping Reduction</label>
+                      <span className="text-xs text-cyan-400 font-bold font-mono">{simReduction}%</span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <input
+                        type="range"
+                        min="0"
+                        max="80"
+                        step="10"
+                        value={simReduction}
+                        onChange={(e) => setSimReduction(Number(e.target.value))}
+                        className="w-full h-1 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-cyan-500"
+                      />
+                      <span className="text-[9px] text-slate-500 whitespace-nowrap">Save Limit</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Simulated Line Chart */}
+                <div className="h-60 w-full bg-slate-950/40 border border-slate-900 rounded-xl p-3">
+                  {(() => {
+                    const simData = runScenarioSimulation(simScenario, simReduction);
+                    const chartData = simData.map((val, idx) => ({
+                      day: idx + 1,
+                      Water_Table_MBGL: val,
+                      Warning_Threshold: 30.0,
+                      Critical_Threshold: 50.0,
+                      Collapse_Threshold: 70.0
+                    }));
+
+                    return (
+                      <ResponsiveContainer width="100%" height="100%">
+                        <LineChart data={chartData} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
+                          <XAxis dataKey="day" stroke="#64748b" fontSize={9} label={{ value: "Forecast Horizon (Days)", position: "insideBottom", fill: "#64748b", fontSize: 9, offset: -5 }} />
+                          <YAxis stroke="#64748b" fontSize={9} reversed domain={[0, 80]} label={{ value: "MBGL (Depth)", angle: -90, position: "insideLeft", fill: "#64748b", fontSize: 9 }} />
+                          <Tooltip contentStyle={{ backgroundColor: "#020617", border: "1px solid #334155" }} labelStyle={{ color: "#38bdf8", fontWeight: "bold" }} />
+                          <Legend verticalAlign="top" height={32} iconType="line" />
+                          
+                          <Line type="monotone" dataKey="Water_Table_MBGL" name="Simulated Depth" stroke="#a855f7" strokeWidth={2.5} dot={false} />
+                          <Line type="monotone" dataKey="Warning_Threshold" name="Warning (30m)" stroke="#f97316" strokeDasharray="3 3" dot={false} strokeWidth={1} />
+                          <Line type="monotone" dataKey="Critical_Threshold" name="Critical (50m)" stroke="#ef4444" strokeDasharray="3 3" dot={false} strokeWidth={1} />
+                          <Line type="monotone" dataKey="Collapse_Threshold" name="Collapse (70m)" stroke="#701a75" strokeDasharray="3 3" dot={false} strokeWidth={1} />
+                        </LineChart>
+                      </ResponsiveContainer>
+                    );
+                  })()}
+                </div>
+              </div>
+            )}
 
             {/* Historical observations plot */}
             <div className="bg-slate-900/60 border border-slate-800/80 rounded-xl p-5 backdrop-blur-md">
@@ -1020,6 +1198,125 @@ export default function Dashboard() {
           Core Model: CatBoost Validated • Mapping: Nominatim & Open-Meteo • Cache: OK
         </span>
       </footer>
+
+      {/* Floating Chat Copilot Window */}
+      <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end">
+        {chatOpen && (
+          <div className="bg-slate-900 border border-slate-800 rounded-xl shadow-2xl w-80 sm:w-96 h-[450px] flex flex-col overflow-hidden mb-3 backdrop-blur-lg">
+            {/* Header */}
+            <div className="bg-slate-950 border-b border-slate-850 p-3.5 flex justify-between items-center shrink-0">
+              <div className="flex items-center gap-2">
+                <HelpCircle className="w-5 h-5 text-cyan-400" />
+                <div>
+                  <h4 className="text-xs font-black text-slate-100 font-sans">NEERA Hydro-Advisor</h4>
+                  <div className="flex items-center gap-1 text-[9px] text-slate-500 font-sans">
+                    <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></span>
+                    <span>Online • Hydrologist Agent</span>
+                  </div>
+                </div>
+              </div>
+              <button
+                onClick={() => setChatOpen(false)}
+                className="text-slate-400 hover:text-white text-lg font-bold cursor-pointer"
+              >
+                ×
+              </button>
+            </div>
+
+            {/* Messages */}
+            <div className="flex-1 p-3 overflow-y-auto space-y-3 bg-slate-950/60 scrollbar-thin">
+              {chatMessages.map((msg, i) => (
+                <div
+                  key={i}
+                  className={`flex ${msg.sender === "user" ? "justify-end" : "justify-start"}`}
+                >
+                  <div
+                    className={`max-w-[85%] rounded-lg p-2.5 text-xs leading-relaxed ${
+                      msg.sender === "user"
+                        ? "bg-cyan-600 text-white font-sans font-medium"
+                        : "bg-slate-900 border border-slate-800 text-slate-350 font-sans"
+                    }`}
+                  >
+                    {msg.sender === "bot" ? renderMarkdown(msg.text) : msg.text}
+                  </div>
+                </div>
+              ))}
+              {chatLoading && (
+                <div className="flex justify-start">
+                  <div className="bg-slate-900 border border-slate-800 rounded-lg p-2.5 text-xs text-slate-550 font-sans flex items-center gap-2">
+                    <span className="w-1.5 h-1.5 rounded-full bg-cyan-500 animate-bounce"></span>
+                    <span className="w-1.5 h-1.5 rounded-full bg-cyan-500 animate-bounce [animation-delay:0.2s]"></span>
+                    <span className="w-1.5 h-1.5 rounded-full bg-cyan-500 animate-bounce [animation-delay:0.4s]"></span>
+                    <span>Advisor is compiling data...</span>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Input */}
+            <form
+              onSubmit={async (e) => {
+                e.preventDefault();
+                if (!chatInput.trim() || chatLoading) return;
+                const userMsg = chatInput;
+                setChatInput("");
+                setChatMessages(prev => [...prev, { sender: "user", text: userMsg }]);
+                setChatLoading(true);
+
+                try {
+                  const res = await fetch(`${API_BASE_URL}/api/copilot/chat`, {
+                    method: "POST",
+                    headers: {
+                      "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({
+                      user_question: userMsg,
+                      station_id: selectedStation,
+                      lat: weather?.latitude,
+                      lon: weather?.longitude,
+                      query: searchQuery
+                    })
+                  });
+                  if (res.ok) {
+                    const data = await res.json();
+                    setChatMessages(prev => [...prev, { sender: "bot", text: data.answer }]);
+                  } else {
+                    setChatMessages(prev => [...prev, { sender: "bot", text: "System Error: The AI advisor is currently busy. Please retry in a few moments." }]);
+                  }
+                } catch {
+                  setChatMessages(prev => [...prev, { sender: "bot", text: "Network Connection Lost: Cannot reach the NEERA server." }]);
+                } finally {
+                  setChatLoading(false);
+                }
+              }}
+              className="bg-slate-950 border-t border-slate-850 p-2 flex gap-1.5 shrink-0"
+            >
+              <input
+                type="text"
+                className="flex-1 bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-slate-200 outline-none placeholder-slate-500 focus:border-cyan-500 font-sans"
+                placeholder="Ask a question about the aquifer..."
+                value={chatInput}
+                onChange={(e) => setChatInput(e.target.value)}
+                disabled={chatLoading}
+              />
+              <button
+                type="submit"
+                disabled={chatLoading || !chatInput.trim()}
+                className="bg-cyan-600 hover:bg-cyan-500 text-white font-bold text-xs px-3.5 py-1.5 rounded-lg transition-colors cursor-pointer disabled:opacity-50"
+              >
+                Send
+              </button>
+            </form>
+          </div>
+        )}
+
+        <button
+          onClick={() => setChatOpen(!chatOpen)}
+          className="bg-cyan-600 hover:bg-cyan-500 text-white p-3.5 rounded-full shadow-2xl hover:scale-105 transition-transform flex items-center justify-center cursor-pointer border border-cyan-500/20"
+        >
+          <HelpCircle className="w-6 h-6 text-white stroke-[2.5]" />
+        </button>
+      </div>
 
     </div>
   );

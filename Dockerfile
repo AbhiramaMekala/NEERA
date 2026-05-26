@@ -26,6 +26,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Note: This includes the serialized model files and the master database
 COPY *.py /app/
 COPY weather_providers /app/weather_providers
+COPY ai_providers /app/ai_providers
 COPY data /app/data
 COPY outputs /app/outputs
 
