@@ -101,11 +101,21 @@ class RequestTimingMiddleware(BaseHTTPMiddleware):
         response.headers["X-Process-Time-Ms"] = f"{process_time:.2f}"
         return response
 
+from fastapi.middleware.cors import CORSMiddleware
+
 # Initialize FastAPI app
 app = FastAPI(
     title="NEERA Hardened Groundwater Forecasting API",
     description="Machine learning API for seasonal groundwater level predictions in Karnataka, India, with uncertainty intervals.",
     version="2.0.0"
+)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 app.add_middleware(RequestTimingMiddleware)
