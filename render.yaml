@@ -5,7 +5,7 @@ services:
     env: docker
     dockerfilePath: Dockerfile
     dockerContext: .
-    plan: starter
+    plan: free
     envVars:
       - key: GEMINI_API_KEY
         sync: false # User can input their API key via Render Dashboard
@@ -22,7 +22,7 @@ services:
     env: docker
     dockerfilePath: frontend/Dockerfile
     dockerContext: frontend
-    plan: starter
+    plan: free
     envVars:
       - key: NEXT_PUBLIC_API_URL
         value: https://neera-api.onrender.com
